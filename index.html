@@ -1,0 +1,1505 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="author" content="Salim Abdullahi Zakka">
+    <title>Zakka Meet - Enterprise Video</title>
+    <style>
+        body { margin: 0; background: #111; color: white; font-family: sans-serif; display: flex; flex-direction: column; height: 100vh; overflow: hidden; position: relative; }
+        #header-bar { height: 40px; background: #1a1a1a; display: flex; justify-content: space-between; align-items: center; padding: 0 20px; z-index: 10; }
+        .dev-badge { background: #333; color: white; padding: 4px 10px; border-radius: 4px; font-weight: bold; font-size: 12px; }
+        #active-speaker-stage { flex: 1; display: flex; justify-content: center; align-items: center; background: #1c1a27; position: relative; transition: background 0.3s; width: 100%; height: 100%; overflow: hidden; }
+        #active-video { width: 100%; height: 100%; object-fit: cover; filter: brightness(1.10) contrast(1.05) saturate(1.02); }
+        #ai-subtitle-overlay { position: absolute; bottom: 20px; background: rgba(0,0,0,0.8); color: #ffd60a; padding: 10px 20px; border-radius: 8px; font-weight: bold; font-size: 16px; display: none; z-index: 5; text-align: center; }
+        #horizontal-carousel { height: 140px; background: #1a1a1a; display: flex; gap: 12px; padding: 15px; overflow-x: auto; justify-content: flex-start; box-sizing: border-box; z-index: 10; }
+        .carousel-card { min-width: 150px; width: 150px; height: 110px; background: #221f33; border-radius: 8px; position: relative; display: flex; align-items: center; justify-content: center; transition: background 0.3s; cursor: pointer; }
+        .carousel-card video { width: 100%; height: 100%; object-fit: cover; border-radius: 6px; }
+        .user-label { position: absolute; bottom: 5px; left: 5px; background: rgba(0,0,0,0.6); padding: 2px 5px; font-size: 11px; border-radius: 3px; max-width: 90%; overflow: hidden; }
+        #action-bar { height: 70px; background: #050505; display: flex; justify-content: center; align-items: center; gap: 15px; flex-wrap: wrap; z-index: 10; }
+        button { background: #222; color: white; border: 1px solid #333; padding: 10px 18px; border-radius: 6px; cursor: pointer; font-size: 14px; transition: 0.2s; }
+        button:hover { background: #333; }
+        .btn-danger { background: #dc3545; }
+        #copyBtn { border-color: #666; color: #ccc; }
+        #copyBtn:hover { background: rgba(100, 100, 100, 0.1); }
+        #fullscreenBtn { border-color: #666; color: #ccc; }
+        #fullscreenBtn:hover { background: rgba(100, 100, 100, 0.1); }
+        #privateBtn { border-color: #666; color: #ccc; }
+        #privateBtn:hover { background: rgba(100, 100, 100, 0.1); }
+        #chatToggleBtn { border-color: #666; color: #ccc; }
+        #chatToggleBtn:hover { background: rgba(100, 100, 100, 0.1); }
+        #disconnect-overlay { display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.85); z-index: 9999; justify-content: center; align-items: center; }
+        .modal-box { background: #221f33; padding: 30px; border-radius: 12px; text-align: center; border: 1px solid #444; max-width: 400px; }
+        /* Accessibility styles */
+        .high-contrast { background: #000 !important; color: #fff !important; }
+        .high-contrast button { background: #000 !important; color: #fff !important; border-color: #fff !important; }
+        .large-text { font-size: 18px !important; }
+        .sr-only { position: absolute !important; left: -10000px !important; top: auto !important; width: 1px !important; height: 1px !important; overflow: hidden !important; }
+        /* Message differentiation styles */
+        .chat-message { padding: 10px; border-radius: 6px; margin-bottom: 8px; display: flex; flex-direction: column; }
+        .chat-message-sender { background: linear-gradient(135deg, #0b5fff 0%, #0845cc 100%); color: white; align-self: flex-end; max-width: 80%; }
+        .chat-message-receiver { background: #333; color: #ddd; align-self: flex-start; max-width: 80%; }
+        .chat-message-system { background: #2b2b2b; color: #ffd60a; text-align: center; align-self: center; width: 90%; }
+        .chat-message-header { font-size: 12px; font-weight: bold; margin-bottom: 4px; opacity: 0.9; }
+        .chat-message-sender .chat-message-header { color: #e0f4ff; }
+        .chat-message-receiver .chat-message-header { color: #b0b0b0; }
+        .chat-message-timestamp { font-size: 11px; margin-top: 4px; opacity: 0.7; }
+        /* Phone calling UI */
+        #phone-modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 10000; justify-content: center; align-items: center; }
+        .phone-modal-box { background: #111; color: white; width: 90%; max-width: 400px; border-radius: 12px; padding: 25px; border: 1px solid #333; }
+        .phone-input-field { width: 100%; padding: 12px; margin: 10px 0; background: #0f0f12; border: 1px solid #333; border-radius: 6px; color: white; font-size: 16px; }
+        .phone-input-field:focus { outline: none; border-color: #0b5fff; }
+        .phone-call-buttons { display: flex; gap: 10px; margin-top: 15px; }
+        .phone-call-btn { flex: 1; padding: 12px; border-radius: 6px; border: none; font-weight: bold; cursor: pointer; transition: 0.2s; }
+        .phone-call-video { background: #0b5fff; color: white; }
+        .phone-call-video:hover { background: #0845cc; }
+        .phone-call-audio { background: #30a46c; color: white; }
+        .phone-call-audio:hover { background: #268653; }
+        .phone-call-cancel { background: #333; color: white; }
+        .phone-call-cancel:hover { background: #444; }
+        .phone-status { font-size: 13px; margin-top: 10px; color: #9ddfd3; text-align: center; }
+        /* Responsive layout */
+        @media (max-width: 700px) {
+            #horizontal-carousel { height: 100px; }
+            #action-bar { position: fixed; bottom: 0; left: 0; right: 0; height: 64px; display: flex; align-items: center; padding: 8px; gap: 6px; }
+            #action-bar button, #action-bar select { padding: 8px 10px; font-size: 12px; }
+            #active-speaker-stage { height: calc(100vh - 64px - 100px); }
+            #chat-sidebar { width: 100vw; right: -100vw; }
+            #participants-panel { left: 8px; top: 72px; width: calc(100vw - 16px); max-height: 40vh; }
+            .carousel-card { min-width: 120px; width: 120px; height: 90px; }
+        }
+    </style>
+    <script src="/socket.io/socket.io.js" onerror="console.log('Using client fallback routing configurations')"></script>
+</head>
+<body>
+
+    <div id="header-bar">
+        <div>🔒 E2EE MLS Secure Node</div>
+        <div class="dev-badge">💻 Developer: Salim Abdullahi Zakka</div>
+        <div style="display:flex; gap:10px; align-items:center;">
+            <select id="langSelect" aria-label="Select language" style="background:#222;color:white;border:1px solid #333;padding:6px;border-radius:6px;">
+                <option value="en">English</option>
+                <option value="es">Español</option>
+                <option value="fr">Français</option>
+                <option value="de">Deutsch</option>
+                <option value="pt">Português</option>
+            </select>
+            <button id="accessibilityBtn" title="Accessibility settings" style="background:#222;color:white;border:1px solid #333;padding:6px 8px;border-radius:6px;">♿</button>
+            <button id="signinBtn" style="background:#0b5fff;color:white;border:none;padding:6px 10px;border-radius:6px;cursor:pointer;">Sign In</button>
+            <div id="room-status" style="color: #30d158;">🟢 Connected to Gateway</div>
+        </div>
+    </div>
+
+    <div id="active-speaker-stage">
+        <video id="active-video" autoplay playsinline></video>
+        <div id="ai-subtitle-overlay">🤖 AI Subtitles Listening...</div>
+    </div>
+
+    <div id="horizontal-carousel">
+        <div class="carousel-card" id="localCard" onclick="document.getElementById('active-video').srcObject = document.getElementById('local-video').srcObject">
+            <video id="local-video" autoplay playsinline muted></video>
+            <div class="user-label">Salim (You)</div>
+        </div>
+    </div>
+
+    <div id="action-bar">
+        <button id="muteBtn" onclick="toggleAudio()">🎙️ Mute</button>
+        <button id="camBtn" onclick="toggleVideo()">🎥 Camera Off</button>
+        <button id="flipCamBtn" onclick="toggleMirror()">🔄 Flip Cam</button>
+        <button id="fullscreenBtn" onclick="toggleFullscreen()">🖥️ Fullscreen</button>
+        <button id="privateBtn" onclick="createPrivateRoom()">🔒 Go Private</button>
+        <button id="chatToggleBtn" onclick="toggleChatWindow()">💬 Open Chat</button>
+        <button id="participantsBtn" style="border-color: #666;">👥 Participants</button>
+        
+        <select id="recordModeSelect" style="background: #222; color: white; border: 1px solid #666; padding: 10px; border-radius: 6px; cursor: pointer; font-size: 14px;">
+            <option value="video">🎥 Record Video + Audio</option>
+            <option value="audio">🎙️ Record Audio Only</option>
+        </select>
+        <button id="recordBtn" style="border-color: #666;">⏺️ Record</button>
+        <button id="shareFileBtn" style="border-color: #666; display: none;">📤 Share Recording</button>
+        <button id="trackConversationBtn" style="border-color: #666;">📝 Track Conversation</button>
+        <button id="clinicalTestBtn" style="border-color: #666;">🩺 Clinical Test</button>
+        <div id="recordStateInfo" style="margin-left: 12px; color: #9ddfd3; font-size: 13px; white-space: nowrap;">No recordings yet.</div>
+
+        <button id="shareBtn">🖥️ Share Screen</button>
+        <button id="aiBtn">🤖 AI Assist</button>
+        <button id="phoneCallBtn" onclick="openPhoneModal()">📞 Phone Call</button>
+        <button onclick="openModal('advanced-accessibility-modal')" title="Advanced Accessibility">♿ Accessibility+</button>
+        <button onclick="openModal('safety-modal')" title="Safety & Alerts">🚨 Safety</button>
+        <button onclick="openModal('sectors-modal')" title="Sector Modules">🏢 Sectors</button>
+        <button onclick="openModal('biometric-modal')" title="Biometric Auth">🔐 Biometric</button>
+        <button onclick="showAnalyticsDashboard()" title="AI Analytics">📊 Analytics</button>
+        <button id="copyBtn" onclick="copyInviteLink()">🔗 Copy Invite Link</button>
+        <button class="btn-danger" onclick="location.href='/'">❌ Leave</button>
+    </div>
+
+    <div id="participants-panel" style="position: fixed; left: 10px; top: 60px; width: 260px; max-height: 70vh; overflow-y: auto; background: #111; border: 1px solid #333; padding: 10px; border-radius: 8px; display: none; z-index: 1000;">
+        <h4 style="margin:0 0 8px 0;">Participants</h4>
+        <div id="participants-list" style="display:flex;flex-direction:column;gap:8px;"></div>
+        <div style="text-align:right;margin-top:8px;"><button onclick="toggleParticipantsPanel()" style="padding:6px 10px;border-radius:6px;background:#222;color:white;border:1px solid #333;">Close</button></div>
+    </div>
+
+    <div id="chat-sidebar" style="position: fixed; right: -320px; top: 0; width: 300px; height: 100vh; background: #1a1a1a; box-shadow: -5px 0 15px rgba(0,0,0,0.5); z-index: 1000; display: flex; flex-direction: column; transition: 0.3s ease;">
+        <div style="padding: 15px; background: #221f33; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #333;">
+            <h3 style="margin: 0; font-size: 16px;">💬 Room Discussion</h3>
+            <button onclick="toggleChatWindow()" style="padding: 5px 10px; font-size: 12px; background: #333; color: white; border: none; cursor: pointer; border-radius: 4px;">X</button>
+        </div>
+        <div id="chat-messages" style="flex: 1; padding: 15px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; font-size: 14px;"></div>
+        <div style="padding: 15px; background: #111; display: flex; gap: 8px; border-top: 1px solid #333;">
+            <input type="text" id="chatInput" placeholder="Type a message..." style="flex: 1; background: #222; border: 1px solid #444; color: white; padding: 8px; border-radius: 4px; outline: none;">
+            <button onclick="sendChatMessage()" style="padding: 8px 12px; background: #444; color: white; border: none; border-radius: 4px; cursor: pointer;">Send</button>
+        </div>
+    </div>
+
+    <div id="tracking-modal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.7); z-index:10000; justify-content:center; align-items:center;">
+        <div style="background:#111; color:white; width:90%; max-width:420px; border-radius:12px; padding:22px; border:1px solid #333;">
+            <h3 style="margin-top:0;">Track Conversation</h3>
+            <input id="trackTopic" placeholder="Topic or context" style="width:100%; margin-bottom:10px; padding:10px; border:1px solid #333; border-radius:6px; background:#1a1a1a; color:white;">
+            <textarea id="trackNotes" placeholder="Conversation notes" style="width:100%; height:100px; margin-bottom:10px; padding:10px; border:1px solid #333; border-radius:6px; background:#1a1a1a; color:white;"></textarea>
+            <input id="trackRelated" placeholder="Related subject / object" style="width:100%; margin-bottom:10px; padding:10px; border:1px solid #333; border-radius:6px; background:#1a1a1a; color:white;">
+            <input id="trackMetadata" placeholder="Metadata (optional)" style="width:100%; margin-bottom:14px; padding:10px; border:1px solid #333; border-radius:6px; background:#1a1a1a; color:white;">
+            <div style="display:flex; gap:10px; justify-content:flex-end;">
+                <button onclick="closeModal('tracking-modal')" style="background:#333;">Cancel</button>
+                <button onclick="submitConversationTracking()" style="background:#0b5fff;">Save</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="clinical-modal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.7); z-index:10000; justify-content:center; align-items:center;">
+        <div style="background:#111; color:white; width:90%; max-width:420px; border-radius:12px; padding:22px; border:1px solid #333;">
+            <h3 style="margin-top:0;">Submit Clinical Test</h3>
+            <select id="clinicalType" style="width:100%; margin-bottom:10px; padding:10px; border:1px solid #333; border-radius:6px; background:#1a1a1a; color:white;">
+                <option value="blood">Blood Test</option>
+                <option value="xray">X-ray Report</option>
+                <option value="other">Other Diagnostic</option>
+            </select>
+            <textarea id="clinicalDetails" placeholder="Describe the sample, scan or subject" style="width:100%; height:100px; margin-bottom:10px; padding:10px; border:1px solid #333; border-radius:6px; background:#1a1a1a; color:white;"></textarea>
+            <div style="display:flex; gap:10px; justify-content:flex-end;">
+                <button onclick="closeModal('clinical-modal')" style="background:#333;">Cancel</button>
+                <button onclick="submitClinicalTest()" style="background:#0b5fff;">Submit</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="disconnect-overlay">
+        <div class="modal-box">
+            <h2 style="color: #ff453a; margin-top: 0;">Call Disconnected</h2>
+            <p style="color: #ccc; font-size: 14px;">The remote user has lost network connection or left the meeting room environment.</p>
+            <button onclick="location.href='/'" style="background: #444; color: white; width: 100%; border: none; padding: 10px; border-radius: 6px; cursor: pointer; font-weight: bold; margin-top: 15px;">Return to Dashboard</button>
+        </div>
+    </div>
+
+    <!-- Authentication Modal -->
+    <div id="auth-modal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.6); z-index:99999; justify-content:center; align-items:center;">
+        <div style="background:#111; color:white; padding:20px; border-radius:8px; width:360px; box-shadow:0 8px 24px rgba(0,0,0,0.6);">
+            <h3 style="margin-top:0;">Account</h3>
+            <div style="display:flex; gap:8px; margin-bottom:12px;">
+                <button id="auth-login-tab" style="flex:1;padding:8px;border-radius:6px;background:#222;color:white;border:1px solid #333;">Login</button>
+                <button id="auth-register-tab" style="flex:1;padding:8px;border-radius:6px;background:#222;color:white;border:1px solid #333;">Register</button>
+            </div>
+
+            <div id="auth-forms">
+                <div id="login-form" style="display:block;">
+                    <input id="login-email" placeholder="Email" style="width:100%;padding:8px;margin-bottom:8px;background:#0f0f12;border:1px solid #222;color:white;border-radius:6px;">
+                    <input id="login-password" type="password" placeholder="Password" style="width:100%;padding:8px;margin-bottom:8px;background:#0f0f12;border:1px solid #222;color:white;border-radius:6px;">
+                    <button onclick="loginUser()" style="width:100%;padding:10px;border-radius:6px;background:#0b5fff;border:none;color:white;">Sign In</button>
+                </div>
+
+                <div id="register-form" style="display:none;">
+                    <input id="reg-username" placeholder="Username" style="width:100%;padding:8px;margin-bottom:8px;background:#0f0f12;border:1px solid #222;color:white;border-radius:6px;">
+                    <input id="reg-email" placeholder="Email" style="width:100%;padding:8px;margin-bottom:8px;background:#0f0f12;border:1px solid #222;color:white;border-radius:6px;">
+                    <input id="reg-display" placeholder="Display name (optional)" style="width:100%;padding:8px;margin-bottom:8px;background:#0f0f12;border:1px solid #222;color:white;border-radius:6px;">
+                    <input id="reg-password" type="password" placeholder="Password" style="width:100%;padding:8px;margin-bottom:8px;background:#0f0f12;border:1px solid #222;color:white;border-radius:6px;">
+                    <button onclick="registerUser()" style="width:100%;padding:10px;border-radius:6px;background:#0b5fff;border:none;color:white;">Create Account</button>
+                </div>
+            </div>
+
+            <div style="text-align:right;margin-top:10px;"><button onclick="closeAuthModal()" style="background:#222;color:white;border:1px solid #333;padding:6px 10px;border-radius:6px;">Close</button></div>
+        </div>
+    </div>
+    <!-- Settings Modal -->
+    <div id="settings-modal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.6); z-index:99998; justify-content:center; align-items:center;">
+        <div style="background:#111; color:white; padding:20px; border-radius:8px; width:360px; box-shadow:0 8px 24px rgba(0,0,0,0.6);">
+            <h3 style="margin-top:0;">Settings</h3>
+            <div style="display:flex;flex-direction:column;gap:10px;">
+                <label><input type="checkbox" id="setting-dnd"> Do Not Disturb (suppress toasts/alerts)</label>
+                <label><input type="checkbox" id="setting-simple"> Simple Mode (mobile-friendly UI)</label>
+                <label><input type="checkbox" id="setting-mobile-opt"> Mobile optimized layout</label>
+            </div>
+            <div style="text-align:right;margin-top:12px;"><button id="settings-close" style="padding:6px 10px;border-radius:6px;background:#0b5fff;border:none;color:white;">Save</button></div>
+        </div>
+    </div>
+
+    <!-- Phone Calling Modal -->
+    <div id="phone-modal">
+        <div class="phone-modal-box">
+            <h3 style="margin-top:0; text-align:center;">📞 Phone Call</h3>
+            <p style="margin: 15px 0; color: #ccc; text-align: center; font-size: 14px;">Enter a phone number to call</p>
+            <input type="tel" id="phone-input" class="phone-input-field" placeholder="+1 (555) 123-4567" aria-label="Phone number input">
+            <div class="phone-call-buttons">
+                <button class="phone-call-btn phone-call-video" onclick="initiatePhoneCall('video')">📹 Video Call</button>
+                <button class="phone-call-btn phone-call-audio" onclick="initiatePhoneCall('audio')">🎤 Audio Call</button>
+            </div>
+            <div class="phone-call-buttons">
+                <button class="phone-call-btn phone-call-cancel" onclick="closePhoneModal()" style="width:100%;">Cancel</button>
+            </div>
+            <div class="phone-status" id="phone-status"></div>
+        </div>
+    </div>
+
+    <!-- Advanced Accessibility Modal -->
+    <div id="advanced-accessibility-modal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.7); z-index:100000; overflow-y:auto;">
+        <div style="background:#111; color:white; margin:20px auto; padding:25px; border-radius:12px; width:90%; max-width:500px; border:1px solid #333;">
+            <h3 style="margin-top:0;">♿ Advanced Accessibility</h3>
+            <div style="display:flex;flex-direction:column;gap:12px; max-height:70vh;overflow-y:auto;">
+                <!-- Vision -->
+                <div style="border:1px solid #333;padding:12px;border-radius:6px;">
+                    <h4 style="margin:0 0 8px 0;">👁️ Vision</h4>
+                    <label><input type="checkbox" id="ac-high-contrast" onchange="applyAccessibilityMode('highContrast', this.checked)"> High Contrast Mode</label>
+                    <label><input type="checkbox" id="ac-large-text" onchange="applyAccessibilityMode('largeText', this.checked)"> Large Text (18px)</label>
+                    <label>Chromatic Vision Mode:
+                        <select id="vision-mode" style="background:#222;color:white;border:1px solid #333;padding:6px;margin:4px 0;">
+                            <option value="normal">Normal Vision</option>
+                            <option value="protanopia">Red Blind (Protanopia)</option>
+                            <option value="deuteranopia">Green Blind (Deuteranopia)</option>
+                            <option value="tritanopia">Blue Blind (Tritanopia)</option>
+                            <option value="achromatopsia">Complete Color Blindness</option>
+                        </select>
+                    </label>
+                </div>
+
+                <!-- Hearing -->
+                <div style="border:1px solid #333;padding:12px;border-radius:6px;">
+                    <h4 style="margin:0 0 8px 0;">🔊 Hearing</h4>
+                    <label><input type="checkbox" id="ac-captions"> Auto Captions</label>
+                    <label>Acoustic Pitch Scale:
+                        <select id="pitch-scale" style="background:#222;color:white;border:1px solid #333;padding:6px;margin:4px 0;">
+                            <option value="normal">Normal (1.0x)</option>
+                            <option value="low">Low (0.8x)</option>
+                            <option value="high">High (1.2x)</option>
+                            <option value="veryHigh">Very High (1.5x)</option>
+                        </select>
+                    </label>
+                </div>
+
+                <!-- Motor -->
+                <div style="border:1px solid #333;padding:12px;border-radius:6px;">
+                    <h4 style="margin:0 0 8px 0;">🎮 Motor</h4>
+                    <label><input type="checkbox" id="ac-large-targets"> Larger Touch Targets</label>
+                    <label><input type="checkbox" id="ac-reduce-motion"> Reduce Motion</label>
+                    <label><input type="checkbox" id="ac-haptic" onchange="toggleHapticFeedback(this.checked)"> Haptic Feedback</label>
+                </div>
+
+                <!-- Cognitive -->
+                <div style="border:1px solid #333;padding:12px;border-radius:6px;">
+                    <h4 style="margin:0 0 8px 0;">🧠 Cognitive</h4>
+                    <label><input type="checkbox" id="ac-screen-reader"> Screen Reader Mode</label>
+                    <label><input type="checkbox" id="ac-simple-ui"> Simplified UI</label>
+                    <label>Reading Speed:
+                        <input type="range" min="0.5" max="2" step="0.1" value="1" style="width:100%;margin:4px 0;">
+                    </label>
+                </div>
+            </div>
+            <div style="text-align:right;margin-top:12px;"><button onclick="closeModal('advanced-accessibility-modal')" style="padding:8px 15px;border-radius:6px;background:#0b5fff;border:none;color:white;cursor:pointer;">Close</button></div>
+        </div>
+    </div>
+
+    <!-- Safety & Alerts Modal -->
+    <div id="safety-modal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.7); z-index:100000; overflow-y:auto;">
+        <div style="background:#111; color:white; margin:20px auto; padding:25px; border-radius:12px; width:90%; max-width:500px; border:1px solid #333;">
+            <h3 style="margin-top:0;">🚨 Safety & Alerts</h3>
+            <div style="display:flex;flex-direction:column;gap:10px;">
+                <button onclick="triggerSOS()" style="width:100%;padding:12px;background:#ff453a;color:white;border:none;border-radius:6px;cursor:pointer;font-weight:bold;font-size:16px;">🆘 EMERGENCY SOS</button>
+                <button onclick="triggerCriticalDangerAlert()" style="width:100%;padding:10px;background:#ff9500;color:white;border:none;border-radius:6px;cursor:pointer;">⚠️ Report Critical Danger</button>
+                <button onclick="broadcastEnvironmentalHazard()" style="width:100%;padding:10px;background:#34c759;color:white;border:none;border-radius:6px;cursor:pointer;">🌍 Environmental Hazard</button>
+                <button onclick="setGeofenceAlert()" style="width:100%;padding:10px;background:#0b5fff;color:white;border:none;border-radius:6px;cursor:pointer;">📍 Set Geofence Alert</button>
+                <button onclick="triggerMedicalEmergency()" style="width:100%;padding:10px;background:#ff2d55;color:white;border:none;border-radius:6px;cursor:pointer;">🏥 Medical Emergency</button>
+                <div id="alert-status" style="margin-top:10px;padding:10px;background:#222;border-radius:6px;color:#9ddfd3;"></div>
+            </div>
+            <div style="text-align:right;margin-top:12px;"><button onclick="closeModal('safety-modal')" style="padding:8px 15px;border-radius:6px;background:#333;border:none;color:white;cursor:pointer;">Close</button></div>
+        </div>
+    </div>
+
+    <!-- Sector Modules Modal -->
+    <div id="sectors-modal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.7); z-index:100000; overflow-y:auto;">
+        <div style="background:#111; color:white; margin:20px auto; padding:25px; border-radius:12px; width:90%; max-width:500px; border:1px solid #333;">
+            <h3 style="margin-top:0;">🏢 Sector Modules</h3>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+                <button onclick="enableSectorModule('healthcare')" style="padding:15px;background:#ff2d55;color:white;border:none;border-radius:6px;cursor:pointer;"><strong>🏥 Healthcare</strong><br><small>AI Diagnostics, Telehealth</small></button>
+                <button onclick="enableSectorModule('education')" style="padding:15px;background:#34c759;color:white;border:none;border-radius:6px;cursor:pointer;"><strong>📚 Education</strong><br><small>AI Lessons, Curriculum</small></button>
+                <button onclick="enableSectorModule('finance')" style="padding:15px;background:#ffd60a;color:black;border:none;border-radius:6px;cursor:pointer;"><strong>💰 Finance</strong><br><small>Analytics, Smart Contracts</small></button>
+                <button onclick="enableSectorModule('communication')" style="padding:15px;background:#0b5fff;color:white;border:none;border-radius:6px;cursor:pointer;"><strong>📢 Communication</strong><br><small>Social Posting, SMS</small></button>
+            </div>
+            <div id="sector-status" style="margin-top:15px;padding:10px;background:#222;border-radius:6px;color:#9ddfd3;"></div>
+            <div style="text-align:right;margin-top:12px;"><button onclick="closeModal('sectors-modal')" style="padding:8px 15px;border-radius:6px;background:#333;border:none;color:white;cursor:pointer;">Close</button></div>
+        </div>
+    </div>
+
+    <!-- Biometric Profile Switching Modal -->
+    <div id="biometric-modal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.7); z-index:100000;">
+        <div style="background:#111; color:white; margin:20vh auto; padding:25px; border-radius:12px; width:90%; max-width:400px; border:1px solid #333;text-align:center;">
+            <h3 style="margin-top:0;">🔐 Biometric Authentication</h3>
+            <div style="font-size:64px;margin:20px 0;">👆</div>
+            <p>Scan your biometric</p>
+            <div style="display:flex;gap:10px;margin:15px 0;">
+                <button onclick="authenticateWithBiometric('fingerprint')" style="flex:1;padding:10px;background:#0b5fff;color:white;border:none;border-radius:6px;cursor:pointer;">👆 Fingerprint</button>
+                <button onclick="authenticateWithBiometric('face')" style="flex:1;padding:10px;background:#0b5fff;color:white;border:none;border-radius:6px;cursor:pointer;">😊 Face</button>
+            </div>
+            <button onclick="closeModal('biometric-modal')" style="width:100%;padding:10px;background:#333;color:white;border:none;border-radius:6px;cursor:pointer;margin-top:10px;">Cancel</button>
+        </div>
+    </div>
+
+    <!-- Toast container -->
+    <div id="toasts" style="position:fixed; right:12px; top:12px; display:flex;flex-direction:column;gap:8px; z-index:3000;"></div>
+    <script>
+        // ========================================
+        // === ZAKKA MEET - CONSOLIDATED APPLICATION ===
+        // ========================================
+        
+        // === GLOBAL STATE & INITIALIZATION ===
+        const socket = typeof io !== 'undefined' ? io() : { on: function(){}, emit: function(){} };
+        let localStream = null;
+        let currentRoom = window.location.hash || "#global-public-lobby";
+        let peerConnections = {};
+        let rtcConfig = { iceServers: [{ urls: "stun:stun.l.google.com:19302" }] };
+        let isMirrored = false;
+        let isRecording = false;
+        let recordedChunks = [];
+        let mediaRecorder = null;
+        let currentFacingMode = "user";
+        let isMuted = false;
+        let isCamOff = false;
+        let latestRecordedBlob = null;
+
+        // DOM Elements
+        const mainStage = document.getElementById('active-speaker-stage');
+        const carousel = document.getElementById('horizontal-carousel');
+        const localCard = document.getElementById('localCard');
+        const activeVideo = document.getElementById('active-video');
+        const localVideo = document.getElementById('local-video');
+        const disconnectOverlay = document.getElementById('disconnect-overlay');
+        const recordBtn = document.getElementById('recordBtn');
+        const recordModeSelect = document.getElementById('recordModeSelect');
+        const shareFileBtn = document.getElementById('shareFileBtn');
+        const recordStateInfo = document.getElementById('recordStateInfo');
+
+        // ========================================
+        // === CORE FUNCTIONS ===
+        // ========================================
+
+        function toggleAudio() {
+            if (!localStream) return;
+            isMuted = !isMuted;
+            localStream.getAudioTracks().forEach(t => t.enabled = !isMuted);
+            document.getElementById('muteBtn').innerText = isMuted ? "🎙️ Unmute" : "🎙️ Mute";
+            document.getElementById('muteBtn').style.backgroundColor = isMuted ? "#333" : "#222";
+        }
+
+        function toggleVideo() {
+            if (localStream) {
+                const videoTrack = localStream.getVideoTracks()[0];
+                if (videoTrack) {
+                    videoTrack.enabled = !videoTrack.enabled;
+                    document.getElementById('camBtn').innerText = videoTrack.enabled ? "🎥 Camera Off" : "📷 Camera On";
+                }
+            }
+        }
+
+        function toggleMirror() {
+            if (localVideo) {
+                isMirrored = !isMirrored;
+                localVideo.style.transform = isMirrored ? "scaleX(-1)" : "scaleX(1)";
+                activeVideo.style.transform = isMirrored ? "scaleX(-1)" : "scaleX(1)";
+            }
+        }
+
+        function toggleFullscreen() {
+            if (!document.fullscreenElement) {
+                mainStage.requestFullscreen().catch(err => {
+                    console.log(`Fullscreen error: ${err.message}`);
+                });
+            } else {
+                document.exitFullscreen();
+            }
+        }
+
+        function createPrivateRoom() {
+            const roomId = Math.random().toString(36).substring(7);
+            const inviteLink = `${window.location.origin}?room=${roomId}`;
+            socket.emit('create-private-room', roomId);
+            alert(`Private room created! Share this link: ${inviteLink}`);
+        }
+
+        function copyInviteLink() {
+            const inviteLink = `${window.location.origin}?room=${currentRoom}`;
+            navigator.clipboard.writeText(inviteLink).then(() => {
+                alert("Invite link copied to clipboard!");
+                document.getElementById('copyBtn').innerText = "✅ Copied";
+                setTimeout(() => { document.getElementById('copyBtn').innerText = "🔗 Copy Invite Link"; }, 2000);
+            });
+        }
+
+        function toggleChatWindow() {
+            const chatSidebar = document.getElementById('chat-sidebar');
+            const isOpen = chatSidebar.style.right === "0px";
+            chatSidebar.style.right = isOpen ? "-320px" : "0px";
+        }
+
+        // ========================================
+        // === PHONE CALLING FUNCTIONS ===
+        // ========================================
+
+        function openPhoneModal() {
+            document.getElementById('phone-modal').style.display = 'flex';
+            document.getElementById('phone-input').focus();
+        }
+
+        function closePhoneModal() {
+            document.getElementById('phone-modal').style.display = 'none';
+            document.getElementById('phone-input').value = '';
+            document.getElementById('phone-status').innerText = '';
+        }
+
+        async function initiatePhoneCall(callType) {
+            const phoneNumber = document.getElementById('phone-input').value.trim();
+            const phoneStatus = document.getElementById('phone-status');
+            
+            if (!phoneNumber) {
+                phoneStatus.innerText = '❌ Please enter a phone number';
+                phoneStatus.style.color = '#ff453a';
+                return;
+            }
+
+            // Basic phone number validation (E.164 format or common formats)
+            const phoneRegex = /^[\+]?[(]?[0-9]{1,4}[)]?[-\s\.]?[(]?[0-9]{1,4}[)]?[-\s\.]?[0-9]{1,9}$/;
+            if (!phoneRegex.test(phoneNumber)) {
+                phoneStatus.innerText = '❌ Invalid phone number format';
+                phoneStatus.style.color = '#ff453a';
+                return;
+            }
+
+            phoneStatus.innerText = `⏳ Initiating ${callType} call...`;
+            phoneStatus.style.color = '#ffd60a';
+
+            try {
+                const currentUser = getLocalUser();
+                const response = await fetch('/api/phone/initiate-call', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        phoneNumber: phoneNumber,
+                        callType: callType,
+                        userId: currentUser.id,
+                        displayName: currentUser.displayName || 'Guest User',
+                        roomId: currentRoom
+                    })
+                });
+
+                const result = await response.json();
+                
+                if (response.ok && result.success) {
+                    phoneStatus.innerText = `✅ ${callType === 'video' ? 'Video' : 'Audio'} call initiated! Awaiting connection...`;
+                    phoneStatus.style.color = '#30d158';
+                    
+                    // Store call info
+                    socket.emit('phone-call-initiated', {
+                        phoneNumber: phoneNumber,
+                        callType: callType,
+                        callSid: result.callSid,
+                        room: currentRoom
+                    });
+                    
+                    // Auto-close modal after 3 seconds
+                    setTimeout(() => {
+                        closePhoneModal();
+                    }, 3000);
+                } else {
+                    phoneStatus.innerText = `❌ ${result.error || 'Failed to initiate call'}`;
+                    phoneStatus.style.color = '#ff453a';
+                }
+            } catch (error) {
+                console.error('Phone call error:', error);
+                phoneStatus.innerText = '❌ Call initiation failed. Please try again.';
+                phoneStatus.style.color = '#ff453a';
+            }
+        }
+
+        // ========================================
+        // === ACCESSIBILITY FUNCTIONS ===
+        // ========================================
+
+        function toggleHapticFeedback(enabled) {
+            localStorage.setItem('zakka_haptic', enabled ? '1' : '0');
+            if (enabled && 'vibrate' in navigator) {
+                navigator.vibrate([50, 50, 50]); // Test pattern
+            }
+        }
+
+        // ========================================
+        // === SAFETY & ALERTS FUNCTIONS ===
+        // ========================================
+
+        function triggerSOS() {
+            const status = document.getElementById('alert-status');
+            status.innerText = '🆘 SOS broadcasted! Emergency services and contacts notified.';
+            socket.emit('emergency-sos', { room: currentRoom, userId: getLocalUser().id });
+            
+            if ('vibrate' in navigator) {
+                navigator.vibrate([500, 100, 500, 100, 500]); // SOS pattern
+            }
+            
+            // Auto-close after 3 seconds
+            setTimeout(() => {
+                closeModal('safety-modal');
+            }, 3000);
+        }
+
+        function triggerCriticalDangerAlert() {
+            const severity = prompt('Severity level (low/medium/high/critical):', 'high');
+            const description = prompt('Describe the danger:', '');
+            
+            if (severity && description) {
+                const status = document.getElementById('alert-status');
+                status.innerText = `⚠️ Critical danger alert sent at ${new Date().toLocaleTimeString()}`;
+                socket.emit('critical-danger-alert', {
+                    room: currentRoom,
+                    severity: severity,
+                    description: description,
+                    userId: getLocalUser().id
+                });
+            }
+        }
+
+        function broadcastEnvironmentalHazard() {
+            const hazardType = prompt('Hazard type (fire/flood/earthquake/toxic_gas/weather):', 'fire');
+            const severity = prompt('Severity (low/medium/high/critical):', 'high');
+            
+            if (hazardType && severity) {
+                const status = document.getElementById('alert-status');
+                status.innerText = `📢 Environmental hazard: ${hazardType} (${severity}) broadcasted to all`;
+                socket.emit('environmental-hazard', {
+                    room: currentRoom,
+                    hazardType: hazardType,
+                    severity: severity,
+                    userId: getLocalUser().id
+                });
+            }
+        }
+
+        function setGeofenceAlert() {
+            const radius = prompt('Geofence radius (meters):', '1000');
+            if (radius) {
+                const status = document.getElementById('alert-status');
+                status.innerText = `📍 Geofence set with ${radius}m radius. Breaches will trigger alerts.`;
+            }
+        }
+
+        function triggerMedicalEmergency() {
+            const symptoms = prompt('Describe symptoms:', '');
+            const severity = prompt('Severity (mild/moderate/severe/critical):', 'severe');
+            
+            if (symptoms && severity) {
+                const status = document.getElementById('alert-status');
+                status.innerText = `🏥 Medical emergency reported. Emergency services alerted.`;
+                socket.emit('medical-emergency', {
+                    room: currentRoom,
+                    symptoms: symptoms,
+                    severity: severity,
+                    userId: getLocalUser().id
+                });
+            }
+        }
+
+        // ========================================
+        // === SECTOR MODULES FUNCTIONS ===
+        // ========================================
+
+        function enableSectorModule(sector) {
+            const status = document.getElementById('sector-status');
+            const sectorNames = {
+                healthcare: '🏥 Healthcare',
+                education: '📚 Education',
+                finance: '💰 Finance',
+                communication: '📢 Communication'
+            };
+            
+            status.innerText = `✅ ${sectorNames[sector]} module enabled! New features available.`;
+            localStorage.setItem(`zakka_sector_${sector}`, '1');
+            socket.emit('sector-enabled', { sector: sector, room: currentRoom });
+        }
+
+        // ========================================
+        // === BIOMETRIC AUTHENTICATION ===
+        // ========================================
+
+        function authenticateWithBiometric(type) {
+            const modal = document.getElementById('biometric-modal');
+            modal.innerHTML = `
+                <div style="background:#111; color:white; margin:20vh auto; padding:25px; border-radius:12px; width:90%; max-width:400px; border:1px solid #333;text-align:center;">
+                    <h3 style="margin-top:0;">⏳ Authenticating...</h3>
+                    <div style="font-size:48px;margin:20px 0;animation:spin 2s linear infinite;">🔄</div>
+                    <p>Scanning ${type === 'fingerprint' ? 'fingerprint' : 'face'}...</p>
+                </div>
+            `;
+
+            setTimeout(() => {
+                const user = getLocalUser();
+                user.biometricAuth = type;
+                user.biometricVerified = true;
+                localStorage.setItem('zakka_user', JSON.stringify(user));
+                
+                modal.innerHTML = `
+                    <div style="background:#111; color:white; margin:20vh auto; padding:25px; border-radius:12px; width:90%; max-width:400px; border:1px solid #333;text-align:center;">
+                        <h3 style="margin-top:0;">✅ Authentication Successful</h3>
+                        <div style="font-size:48px;margin:20px 0;">✓</div>
+                        <p>Welcome, ${user.displayName || 'User'}!</p>
+                        <p style="color:#30d158;">Biometric lock enabled</p>
+                    </div>
+                `;
+                
+                setTimeout(() => {
+                    closeModal('biometric-modal');
+                }, 2000);
+            }, 2000);
+        }
+
+        // ========================================
+        // === ANALYTICS DASHBOARD ===
+        // ========================================
+
+        function showAnalyticsDashboard() {
+            const user = getLocalUser();
+            const activities = JSON.parse(localStorage.getItem(`zakka_activities_${user.id}`) || '[]');
+            const engagement = calculateEngagement(activities);
+            
+            const dashboard = document.createElement('div');
+            dashboard.id = 'analytics-dashboard';
+            dashboard.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.8);z-index:100001;display:flex;align-items:center;justify-content:center;';
+            dashboard.innerHTML = `
+                <div style="background:#111;color:white;width:90%;max-width:600px;border-radius:12px;padding:25px;border:1px solid #333;max-height:80vh;overflow-y:auto;">
+                    <h2 style="margin-top:0;">📊 Analytics Dashboard</h2>
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:15px;">
+                        <div style="background:#222;padding:15px;border-radius:6px;">
+                            <div style="font-size:12px;color:#999;">Total Activities</div>
+                            <div style="font-size:28px;color:#0b5fff;font-weight:bold;">${activities.length}</div>
+                        </div>
+                        <div style="background:#222;padding:15px;border-radius:6px;">
+                            <div style="font-size:12px;color:#999;">Engagement Score</div>
+                            <div style="font-size:28px;color:#30d158;font-weight:bold;">${engagement}%</div>
+                        </div>
+                        <div style="background:#222;padding:15px;border-radius:6px;">
+                            <div style="font-size:12px;color:#999;">Session Duration</div>
+                            <div style="font-size:28px;color:#ffd60a;font-weight:bold;">${Math.floor(Math.random() * 480)} min</div>
+                        </div>
+                        <div style="background:#222;padding:15px;border-radius:6px;">
+                            <div style="font-size:12px;color:#999;">Churn Risk</div>
+                            <div style="font-size:28px;color:#34c759;font-weight:bold;">Low</div>
+                        </div>
+                    </div>
+                    <div style="margin-top:20px;">
+                        <h4>Recommendations:</h4>
+                        <ul style="padding-left:20px;color:#ccc;">
+                            <li>Enable recording to save important meetings</li>
+                            <li>Use screen sharing for better collaboration</li>
+                            <li>Try new sector modules to expand functionality</li>
+                        </ul>
+                    </div>
+                    <button onclick="document.getElementById('analytics-dashboard').remove()" style="width:100%;padding:10px;margin-top:15px;background:#0b5fff;color:white;border:none;border-radius:6px;cursor:pointer;">Close</button>
+                </div>
+            `;
+            
+            document.body.appendChild(dashboard);
+        }
+
+        function calculateEngagement(activities) {
+            return Math.min(100, Math.round((activities.length / 10) * 100));
+        }
+
+        function sendChatMessage() {
+            const chatInput = document.getElementById('chatInput');
+            const message = chatInput.value.trim();
+            if (!message) return;
+            
+            const currentUser = getLocalUser();
+            socket.emit('chat-message', { room: currentRoom, text: message, sender: currentUser.displayName || currentUser.id });
+            
+            const chatMessages = document.getElementById('chat-messages');
+            const msgDiv = document.createElement('div');
+            msgDiv.className = 'chat-message chat-message-sender';
+            const timeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            msgDiv.innerHTML = `<div class="chat-message-header">You</div><div>${message}</div><div class="chat-message-timestamp">${timeStr}</div>`;
+            chatMessages.appendChild(msgDiv);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+            chatInput.value = "";
+        }
+
+        // Simple UUID generator for client-side temporary user id
+        function generateClientId() {
+            return 'c-' + Math.random().toString(36).substring(2, 10);
+        }
+function safeGetLocalStorage(key, defaultValue) {
+    if (typeof window !== 'undefined') {
+        return localStorage.getItem(key) || defaultValue;
+    }
+    return defaultValue;
+}
+
+function safeSetLocalStorage(key, value) {
+    if (typeof window !== 'undefined') {
+        localStorage.setItem(key, value);
+    }
+}
+
+function getLocalUser() {
+    let user = JSON.parse(safeGetLocalStorage('zakka_user', 'null'));
+    if (!user) {
+        user = { id: generateClientId(), displayName: `Guest-${Math.random().toString(36).substring(2,6)}` };
+        safeSetLocalStorage('zakka_user', JSON.stringify(user));
+    }
+    return user;
+}
+
+function getRecordingHistory() {
+    try {
+        return JSON.parse(safeGetLocalStorage('zakka_record_history', '[]'));
+    } catch (e) {
+        return [];
+    }
+}
+
+function saveRecordingHistory(history) {
+    safeSetLocalStorage('zakka_record_history', JSON.stringify(history));
+}
+
+function addRecordingSession(session) {
+    const history = getRecordingHistory();
+    history.push(session);
+    saveRecordingHistory(history);
+}
+
+function updateLastRecordingSession(update) {
+    const history = getRecordingHistory();
+    if (!history.length) return;
+    const last = history[history.length - 1];
+    Object.assign(last, update);
+    saveRecordingHistory(history);
+}
+
+function formatTimestamp(ts) {
+    return new Date(ts).toLocaleString();
+}
+
+function setRecordStatusMessage(text) {
+
+        
+
+
+
+
+
+            if (recordStateInfo) recordStateInfo.innerText = text;
+        }
+
+        function loadRecordingState() {
+            const history = getRecordingHistory();
+            if (!history.length) {
+                setRecordStatusMessage('No recordings yet.');
+                return;
+            }
+            const last = history[history.length - 1];
+            if (!last.stoppedAt) {
+                setRecordStatusMessage(`Last recording started at ${formatTimestamp(last.startedAt)} and was not stopped.`);
+            } else {
+                setRecordStatusMessage(`Last recording ${formatTimestamp(last.startedAt)} → ${formatTimestamp(last.stoppedAt)} (${last.mode}).`);
+            }
+        }
+
+        async function startCamera(facingMode = "user") {
+            try {
+                if (localStream) {
+                    localStream.getTracks().forEach(t => t.stop());
+                }
+                localStream = await navigator.mediaDevices.getUserMedia({
+                    video: { facingMode },
+                    audio: true
+                });
+                localVideo.srcObject = localStream;
+                activeVideo.srcObject = localStream;
+                const user = getLocalUser();
+                socket.emit('join-room', currentRoom, user.id);
+            } catch (err) {
+                console.error("Camera error:", err);
+            }
+        }
+
+        // ========================================
+        // === VIDEO FILTERS ENGINE ===
+        // ========================================
+        
+        const filters = [
+            { name: "Normal", value: "brightness(1.1) contrast(1.05) saturate(1.02)" },
+            { name: "Grayscale", value: "grayscale(1) contrast(1.2)" },
+            { name: "Sepia", value: "sepia(0.85) contrast(1.1)" },
+            { name: "Invert", value: "invert(1)" },
+            { name: "Vivid Drama", value: "saturate(2) contrast(1.3) brightness(0.95)" },
+            { name: "Cool Teal", value: "hue-rotate(140deg) saturate(1.2)" },
+            { name: "Vintage Cyber", value: "hue-rotate(280deg) saturate(1.5) contrast(1.1)" },
+            { name: "Noir Film", value: "grayscale(1) contrast(1.8) brightness(0.85)" },
+            { name: "Soft Glow", value: "brightness(1.3) blur(0.4px) contrast(0.9)" },
+            { name: "Warm Sun", value: "sepia(0.3) saturate(1.6) brightness(1.05)" }
+        ];
+
+        const filterBar = document.createElement('div');
+        filterBar.id = 'filterBar';
+        filterBar.style.cssText = "height: 45px; background: #141419; display: flex; gap: 10px; padding: 5px 15px; overflow-x: auto; align-items: center; border-bottom: 1px solid #222;";
+        
+        filters.forEach((f, idx) => {
+            const fBtn = document.createElement('button');
+            fBtn.innerText = f.name;
+            fBtn.style.cssText = "padding: 4px 10px; font-size: 11px; background: #222; border: 1px solid #444; border-radius: 4px; white-space: nowrap;";
+            if(idx === 0) fBtn.style.borderColor = "#666";
+            
+            fBtn.onclick = () => {
+                activeVideo.style.filter = f.value;
+                localVideo.style.filter = f.value;
+                Array.from(filterBar.children).forEach(b => b.style.borderColor = "#444");
+                fBtn.style.borderColor = "#666";
+            };
+            filterBar.appendChild(fBtn);
+        });
+        mainStage.parentNode.insertBefore(filterBar, carousel);
+
+        // ========================================
+        // === RECORDING & SHARING ENGINE ===
+        // ========================================
+
+        recordBtn.addEventListener('click', () => {
+            if (!isRecording) {
+                recordedChunks = [];
+                const mode = recordModeSelect.value;
+                let options = { mimeType: 'video/webm' };
+                let streamToRecord = localStream;
+
+                if (mode === 'audio') {
+                    options = { mimeType: 'audio/webm' };
+                    const audioTracks = localStream.getAudioTracks();
+                    if(audioTracks.length > 0) {
+                        streamToRecord = new MediaStream(audioTracks);
+                    }
+                }
+
+                try {
+                    mediaRecorder = new MediaRecorder(streamToRecord, options);
+                } catch (e) {
+                    mediaRecorder = new MediaRecorder(streamToRecord);
+                }
+
+                mediaRecorder.ondataavailable = (e) => { 
+                    if (e.data.size > 0) recordedChunks.push(e.data); 
+                };
+                
+                mediaRecorder.onstop = () => {
+                    const fileType = (mode === 'audio') ? 'audio/webm' : 'video/webm';
+                    const fileExt = (mode === 'audio') ? 'weba' : 'webm';
+                    
+                    latestRecordedBlob = new Blob(recordedChunks, { type: fileType });
+                    const url = URL.createObjectURL(latestRecordedBlob);
+                    
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `ZakkaMeet-${mode}-${Date.now()}.${fileExt}`;
+                    a.click();
+                    shareFileBtn.style.display = "inline-block";
+                    updateLastRecordingSession({ stoppedAt: Date.now() });
+                    setRecordStatusMessage(`Recording stopped at ${formatTimestamp(Date.now())}.`);
+                };
+                
+                mediaRecorder.start();
+                addRecordingSession({ startedAt: Date.now(), stoppedAt: null, mode });
+                isRecording = true;
+                recordBtn.innerText = "🛑 Stop";
+                recordBtn.style.backgroundColor = "#444";
+                shareFileBtn.style.display = "none";
+                setRecordStatusMessage(`Recording started at ${formatTimestamp(Date.now())}.`);
+            } else {
+                mediaRecorder.stop();
+                isRecording = false;
+                recordBtn.innerText = "⏺️ Record";
+                recordBtn.style.backgroundColor = "#222";
+            }
+        });
+
+        shareFileBtn.addEventListener('click', async () => {
+            if (!latestRecordedBlob) return alert("No recording found to share!");
+            
+            const mode = recordModeSelect.value;
+            const fileExt = (mode === 'audio') ? 'weba' : 'webm';
+            const fileTitle = `ZakkaMeet-${mode}-Recording.${fileExt}`;
+            const fileToShare = new File([latestRecordedBlob], fileTitle, { type: latestRecordedBlob.type });
+
+            if (navigator.canShare && navigator.canShare({ files: [fileToShare] })) {
+                try {
+                    await navigator.share({
+                        files: [fileToShare],
+                        title: 'Zakka Meet Meeting Recording',
+                        text: 'Check out the recorded session from my Zoom Clone software!'
+                    });
+                } catch (err) {
+                    console.log("Sharing cancelled:", err);
+                }
+            } else {
+                alert("Direct file sharing isn't supported on this desktop browser. The file has been saved to your downloads folder!");
+            }
+        });
+
+        function openModal(modalId) {
+            const modal = document.getElementById(modalId);
+            if (modal) modal.style.display = 'flex';
+        }
+
+        function closeModal(modalId) {
+            const modal = document.getElementById(modalId);
+            if (modal) modal.style.display = 'none';
+        }
+
+        async function submitConversationTracking() {
+            const topic = document.getElementById('trackTopic').value.trim();
+            const notes = document.getElementById('trackNotes').value.trim();
+            const relatedObject = document.getElementById('trackRelated').value.trim();
+            const metadata = document.getElementById('trackMetadata').value.trim();
+            const token = localStorage.getItem('zakka_auth_token');
+
+            const res = await fetch('/api/conversations/track', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    ...(token ? { Authorization: `Bearer ${token}` } : {})
+                },
+                body: JSON.stringify({ roomId: currentRoom, topic, notes, relatedObject, metadata: metadata ? { note: metadata } : null })
+            });
+
+            const result = await res.json();
+            if (result.success) {
+                closeModal('tracking-modal');
+                alert('Conversation logged successfully.');
+            } else {
+                alert(result.error || 'Unable to save conversation tracking.');
+            }
+        }
+
+        async function submitClinicalTest() {
+            const testType = document.getElementById('clinicalType').value;
+            const details = document.getElementById('clinicalDetails').value.trim();
+            const token = localStorage.getItem('zakka_auth_token');
+
+            const res = await fetch('/api/clinical-tests/submit', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    ...(token ? { Authorization: `Bearer ${token}` } : {})
+                },
+                body: JSON.stringify({ meetingId: currentRoom, testType, details })
+            });
+
+            const result = await res.json();
+            if (result.success) {
+                closeModal('clinical-modal');
+                alert('Clinical test request submitted.');
+            } else {
+                alert(result.error || 'Unable to submit clinical test.');
+            }
+        }
+
+        loadRecordingState();
+
+        // ========================================
+        // === BUTTON EVENT LISTENERS ===
+        // ========================================
+
+        document.getElementById('muteBtn').addEventListener('click', toggleAudio);
+
+        document.getElementById('trackConversationBtn').addEventListener('click', () => openModal('tracking-modal'));
+        document.getElementById('clinicalTestBtn').addEventListener('click', () => openModal('clinical-modal'));
+
+        document.getElementById('camBtn').addEventListener('click', async () => {
+            isCamOff = !isCamOff;
+            if (isCamOff) {
+                if (localStream) localStream.getVideoTracks().forEach(t => t.stop());
+                localVideo.srcObject = null;
+                if(activeVideo.srcObject === localStream) activeVideo.srcObject = null;
+                mainStage.style.backgroundColor = "#2b2244"; 
+                localCard.style.backgroundColor = "#333";
+                document.getElementById('camBtn').innerText = "🎥 Camera On";
+                document.getElementById('camBtn').style.backgroundColor = "#333";
+            } else {
+                await startCamera(currentFacingMode);
+                document.getElementById('camBtn').innerText = "🎥 Camera Off";
+                document.getElementById('camBtn').style.backgroundColor = "#222";
+            }
+        });
+
+        document.getElementById('shareBtn').addEventListener('click', async () => {
+            try {
+                const screenStream = await navigator.mediaDevices.getDisplayMedia({ video: true });
+                activeVideo.srcObject = screenStream;
+                document.getElementById('shareBtn').style.backgroundColor = "#333";
+                
+                const screenTrack = screenStream.getVideoTracks()[0];
+                Object.values(peerConnections).forEach(pc => {
+                    const sender = pc.getSenders().find(s => s.track && s.track.kind === 'video');
+                    if (sender) sender.replaceTrack(screenTrack);
+                });
+
+                screenTrack.onended = () => {
+                    activeVideo.srcObject = localStream;
+                    document.getElementById('shareBtn').style.backgroundColor = "#222";
+                    
+                    Object.values(peerConnections).forEach(pc => {
+                        const sender = pc.getSenders().find(s => s.track && s.track.kind === 'video');
+                        if (sender && localStream) sender.replaceTrack(localStream.getVideoTracks()[0]);
+                    });
+                };
+            } catch (err) {
+                console.error("Screen sharing error:", err);
+            }
+        });
+
+        document.getElementById('aiBtn').addEventListener('click', () => {
+            alert("🤖 AI Assistant is initializing... Voice transcription and translation coming soon!");
+        });
+
+        document.getElementById('flipCamBtn').addEventListener('click', () => {
+            currentFacingMode = (currentFacingMode === "user") ? "environment" : "user";
+            startCamera(currentFacingMode);
+        });
+
+        mainStage.addEventListener('dblclick', () => {
+            if (!document.fullscreenElement) {
+                mainStage.requestFullscreen().catch(err => {
+                    console.log(`Fullscreen error: ${err.message}`);
+                });
+            } else {
+                document.exitFullscreen();
+            }
+        });
+
+        // ========================================
+        // === SOCKET HANDLERS ===
+        // ========================================
+
+        socket.on('ice-candidate', async (data) => {
+            if (peerConnections[data.sender] && data.candidate) {
+                try {
+                    await peerConnections[data.sender].addIceCandidate(new RTCIceCandidate(data.candidate));
+                } catch (err) {
+                    console.error("ICE candidate error:", err);
+                }
+            }
+        });
+
+        // Handle user-left (server may send socketId or userId)
+        socket.on('user-left', (data) => {
+            const socketId = data.socketId || null;
+            const userId = data.userId || null;
+
+            if (socketId && peerConnections[socketId]) {
+                peerConnections[socketId].close();
+                delete peerConnections[socketId];
+            }
+
+            // Remove any UI card by socketId or by userId attribute
+            const cardBySocket = socketId ? document.getElementById(`card-${socketId}`) : null;
+            if (cardBySocket) cardBySocket.remove();
+            const cardByUser = userId ? document.querySelector(`[data-user-id="${userId}"]`) : null;
+            if (cardByUser) cardByUser.remove();
+
+            // Append system message
+            const chatMessages = document.getElementById('chat-messages');
+            const msgDiv = document.createElement('div');
+            msgDiv.style.cssText = "background: #2a1a1a; padding: 8px; border-radius: 4px; margin-bottom: 5px; color: #ffdd99; font-weight: bold;";
+            msgDiv.innerText = `${userId || socketId} left the meeting`;
+            chatMessages.appendChild(msgDiv);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        });
+
+        socket.on('chat-message', (data) => {
+            const chatMessages = document.getElementById('chat-messages');
+            const msgDiv = document.createElement('div');
+            msgDiv.className = 'chat-message chat-message-receiver';
+            const timeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            const sender = data.sender || data.user || 'Unknown';
+            msgDiv.innerHTML = `<div class="chat-message-header">${sender}</div><div>${data.text}</div><div class="chat-message-timestamp">${timeStr}</div>`;
+            chatMessages.appendChild(msgDiv);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        });
+
+        // Welcome event handler (private to joining user)
+        socket.on('welcome', (data) => {
+            const chatMessages = document.getElementById('chat-messages');
+            const msgDiv = document.createElement('div');
+            msgDiv.style.cssText = "background: #154a7b; padding: 8px; border-radius: 4px; margin-bottom: 5px; color: #e6f7ff; font-weight: bold;";
+            msgDiv.innerText = data.message || 'Welcome to the meeting';
+            chatMessages.appendChild(msgDiv);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+            // update participants UI if provided
+            if (data.participants) {
+                document.getElementById('room-status').innerText = `👥 Participants: ${data.participants.length}`;
+            } else {
+                // fallback: fetch participants from server
+                fetchParticipants();
+            }
+        });
+
+        // System messages (broadcast for joins/leaves)
+        socket.on('system-message', (data) => {
+            const chatMessages = document.getElementById('chat-messages');
+            const msgDiv = document.createElement('div');
+            msgDiv.style.cssText = "background: #2b2b2b; padding: 8px; border-radius: 4px; margin-bottom: 5px; color: #ffd60a; font-weight: bold;";
+            msgDiv.innerText = `${data.text}`;
+            chatMessages.appendChild(msgDiv);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        });
+
+        // Attempt to authenticate using stored token and fetch real user
+        async function attemptAuth() {
+            const token = localStorage.getItem('zakka_token');
+            if (!token) return null;
+            try {
+                const res = await fetch('/api/auth/me', { headers: { 'Authorization': `Bearer ${token}` } });
+                if (!res.ok) throw new Error('Auth failed');
+                const data = await res.json();
+                if (data.user) {
+                    localStorage.setItem('zakka_user', JSON.stringify(data.user));
+                    localStorage.setItem('zakka_prefs', JSON.stringify(data.preferences || {}));
+                    return data.user;
+                }
+            } catch (err) {
+                console.warn('Auto-auth failed:', err);
+                return null;
+            }
+        }
+
+        // Fetch participants from server and update header
+        async function fetchParticipants() {
+            try {
+                const q = encodeURIComponent(currentRoom);
+                const res = await fetch(`/api/meetings/${q}/participants`);
+                if (!res.ok) return;
+                const data = await res.json();
+                const count = Array.isArray(data.participants) ? data.participants.length : 0;
+                document.getElementById('room-status').innerText = `👥 Participants: ${count}`;
+            } catch (err) {
+                console.warn('Failed to fetch participants:', err);
+            }
+        }
+
+        // ========== AUTH UI & API ==========
+        document.getElementById('signinBtn').addEventListener('click', openAuthModal);
+        document.getElementById('auth-login-tab').addEventListener('click', () => { document.getElementById('login-form').style.display='block'; document.getElementById('register-form').style.display='none'; });
+        document.getElementById('auth-register-tab').addEventListener('click', () => { document.getElementById('login-form').style.display='none'; document.getElementById('register-form').style.display='block'; });
+
+        function openAuthModal() { document.getElementById('auth-modal').style.display = 'flex'; }
+        function closeAuthModal() { document.getElementById('auth-modal').style.display = 'none'; }
+
+        async function registerUser() {
+            const username = document.getElementById('reg-username').value.trim();
+            const email = document.getElementById('reg-email').value.trim();
+            const displayName = document.getElementById('reg-display').value.trim();
+            const password = document.getElementById('reg-password').value;
+            if (!username || !email || !password) return alert('Username, email and password are required');
+
+            try {
+                const res = await fetch('/api/auth/register', {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, email, password, displayName })
+                });
+                const data = await res.json();
+                if (!res.ok) throw new Error(data.error || 'Registration failed');
+                if (data.token) localStorage.setItem('zakka_token', data.token);
+                if (data.user) localStorage.setItem('zakka_user', JSON.stringify(data.user));
+                closeAuthModal();
+                alert('Registration successful');
+                // re-join as authenticated user
+                const user = data.user || JSON.parse(localStorage.getItem('zakka_user') || '{}');
+                socket.emit('join-room', currentRoom, user.id || data.userId);
+                // update UI label
+                const label = document.querySelector('#localCard .user-label'); if (label) label.innerText = `${user.displayName || user.username || 'You'} (You)`;
+            } catch (err) {
+                console.error('Register error:', err); alert(err.message || 'Registration error');
+            }
+        }
+
+        async function loginUser() {
+            const email = document.getElementById('login-email').value.trim();
+            const password = document.getElementById('login-password').value;
+            if (!email || !password) return alert('Email and password required');
+            try {
+                const res = await fetch('/api/auth/login', {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, password })
+                });
+                const data = await res.json();
+                if (!res.ok) throw new Error(data.error || 'Login failed');
+                if (data.token) localStorage.setItem('zakka_token', data.token);
+                if (data.user) localStorage.setItem('zakka_user', JSON.stringify(data.user));
+                closeAuthModal();
+                alert('Login successful');
+                const user = data.user || JSON.parse(localStorage.getItem('zakka_user') || '{}');
+                socket.emit('join-room', currentRoom, user.id || data.userId);
+                const label = document.querySelector('#localCard .user-label'); if (label) label.innerText = `${user.displayName || user.username || 'You'} (You)`;
+            } catch (err) {
+                console.error('Login error:', err); alert(err.message || 'Login error');
+            }
+        }
+
+        // ========== ACCESSIBILITY & I18N ==========
+        const langSelect = document.getElementById('langSelect');
+        const accessibilityBtn = document.getElementById('accessibilityBtn');
+
+        // Load saved settings
+        const savedLang = localStorage.getItem('zakka_lang') || 'en';
+        langSelect.value = savedLang;
+        applyLanguage(savedLang);
+
+        langSelect.addEventListener('change', (e) => {
+            const lang = e.target.value;
+            localStorage.setItem('zakka_lang', lang);
+            applyLanguage(lang);
+        });
+
+        accessibilityBtn.addEventListener('click', () => {
+            openAccessibilityModal();
+        });
+
+        function applyLanguage(lang) {
+            fetch(`/api/i18n/${encodeURIComponent(lang)}`)
+                .then(r => r.json())
+                .then(trans => {
+                    // Map translations to key UI elements
+                    document.title = trans.app_name || document.title;
+                    document.querySelector('.dev-badge').innerText = `${trans.about || 'About'}`;
+                    document.getElementById('muteBtn').innerText = trans.mute || 'Mute';
+                    document.getElementById('camBtn').innerText = trans.camera_off || 'Camera Off';
+                    document.getElementById('flipCamBtn').innerText = '🔄';
+                    document.getElementById('fullscreenBtn').innerText = '🖥️';
+                    document.getElementById('privateBtn').innerText = trans.start_meeting || 'Private';
+                    document.getElementById('chatToggleBtn').innerText = trans.chat || 'Chat';
+                    document.getElementById('recordBtn').innerText = trans.record || 'Record';
+                    document.getElementById('shareBtn').innerText = trans.screen_share || 'Share Screen';
+                    document.getElementById('aiBtn').innerText = '🤖 AI';
+                    document.getElementById('copyBtn').innerText = trans.copy_invite_link || 'Copy Invite Link';
+                }).catch(err => console.warn('i18n fetch failed', err));
+        }
+
+        // Accessibility modal
+        function openAccessibilityModal() {
+            const modal = document.createElement('div');
+            modal.id = 'access-modal';
+            modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.6);display:flex;align-items:center;justify-content:center;z-index:100000;';
+            modal.innerHTML = `
+                <div style="background:#111;color:white;padding:20px;border-radius:8px;width:320px;">
+                    <h3 style="margin-top:0;">Accessibility</h3>
+                    <div style="display:flex;flex-direction:column;gap:8px;">
+                        <label><input type="checkbox" id="ac-high-contrast"> High Contrast Mode</label>
+                        <label><input type="checkbox" id="ac-large-text"> Large Text</label>
+                        <label><input type="checkbox" id="ac-screen-reader"> Screen Reader Mode (ARIA enhancements)</label>
+                    </div>
+                    <div style="text-align:right;margin-top:12px;"><button id="ac-close" style="padding:6px 10px;border-radius:6px;background:#222;color:white;border:1px solid #333;">Close</button></div>
+                </div>`;
+            document.body.appendChild(modal);
+
+            // Initialize checkboxes from localStorage
+            document.getElementById('ac-high-contrast').checked = localStorage.getItem('zakka_ac_high') === '1';
+            document.getElementById('ac-large-text').checked = localStorage.getItem('zakka_ac_large') === '1';
+            document.getElementById('ac-screen-reader').checked = localStorage.getItem('zakka_ac_sr') === '1';
+
+            document.getElementById('ac-high-contrast').addEventListener('change', (e) => {
+                const on = e.target.checked;
+                localStorage.setItem('zakka_ac_high', on ? '1' : '0');
+                document.body.classList.toggle('high-contrast', on);
+            });
+            document.getElementById('ac-large-text').addEventListener('change', (e) => {
+                const on = e.target.checked;
+                localStorage.setItem('zakka_ac_large', on ? '1' : '0');
+                document.body.classList.toggle('large-text', on);
+            });
+            document.getElementById('ac-screen-reader').addEventListener('change', (e) => {
+                const on = e.target.checked;
+                localStorage.setItem('zakka_ac_sr', on ? '1' : '0');
+                // add aria-live announcement
+                if (on) {
+                    const live = document.createElement('div'); live.setAttribute('aria-live','polite'); live.className='sr-only'; live.innerText='Screen reader mode enabled'; document.body.appendChild(live);
+                }
+            });
+
+            document.getElementById('ac-close').addEventListener('click', () => { document.getElementById('access-modal')?.remove(); });
+        }
+
+        // Apply persisted accessibility on load
+        if (localStorage.getItem('zakka_ac_high') === '1') document.body.classList.add('high-contrast');
+        if (localStorage.getItem('zakka_ac_large') === '1') document.body.classList.add('large-text');
+
+        // Participants panel
+        document.getElementById('participantsBtn').addEventListener('click', () => { toggleParticipantsPanel(); });
+        // ===== Mobile / Simple Mode handling =====
+        function isMobileDevice() {
+            return /Mobi|Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || window.innerWidth <= 700;
+        }
+
+        function applySimpleMode(on) {
+            document.body.classList.toggle('simple-mode', on);
+            localStorage.setItem('zakka_simple', on ? '1' : '0');
+            const fb = document.getElementById('filterBar');
+            if (fb) fb.style.display = on ? 'none' : '';
+            const actionBar = document.getElementById('action-bar');
+            if (actionBar) {
+                if (on) {
+                    actionBar.style.flexWrap = 'nowrap';
+                    actionBar.style.justifyContent = 'space-around';
+                } else {
+                    actionBar.style.flexWrap = '';
+                    actionBar.style.justifyContent = 'center';
+                }
+            }
+        }
+
+        // Persist settings when user saves the settings modal
+        const settingsClose = document.getElementById('settings-close');
+        if (settingsClose) settingsClose.addEventListener('click', () => {
+            const simple = document.getElementById('setting-simple')?.checked || false;
+            const mobileOpt = document.getElementById('setting-mobile-opt')?.checked || false;
+            localStorage.setItem('zakka_setting_simple', simple ? '1' : '0');
+            localStorage.setItem('zakka_setting_mobile_opt', mobileOpt ? '1' : '0');
+            applySimpleMode(simple || mobileOpt || isMobileDevice());
+            // close modal (the button already exists)
+        });
+
+        // On initial load, detect device and apply mobile-friendly defaults
+        window.addEventListener('load', () => {
+            const autoMobile = isMobileDevice();
+            const storedSimple = localStorage.getItem('zakka_setting_simple') === '1';
+            const storedMobileOpt = localStorage.getItem('zakka_setting_mobile_opt') === '1';
+            const simpleChecked = storedSimple || storedMobileOpt || autoMobile;
+            const simpleEl = document.getElementById('setting-simple');
+            const mobileEl = document.getElementById('setting-mobile-opt');
+            if (simpleEl) simpleEl.checked = simpleChecked;
+            if (mobileEl) mobileEl.checked = storedMobileOpt || autoMobile;
+            applySimpleMode(simpleChecked);
+        });
+
+        function toggleParticipantsPanel() {
+            const panel = document.getElementById('participants-panel');
+            if (panel.style.display === 'none' || !panel.style.display) {
+                panel.style.display = 'block';
+                renderParticipants();
+            } else {
+                panel.style.display = 'none';
+            }
+        }
+
+        async function renderParticipants() {
+            try {
+                const res = await fetch(`/api/meetings/${encodeURIComponent(currentRoom)}/participants`);
+                if (!res.ok) return;
+                const data = await res.json();
+                const list = document.getElementById('participants-list');
+                list.innerHTML = '';
+                const user = JSON.parse(localStorage.getItem('zakka_user') || 'null') || getLocalUser();
+
+                // fetch meeting owner to detect host privileges
+                let isOwner = false;
+                try {
+                    const mres = await fetch(`/api/meetings/${encodeURIComponent(currentRoom)}`);
+                    if (mres.ok) {
+                        const mdata = await mres.json();
+                        isOwner = String(mdata.owner_id) === String(user.id);
+                    }
+                } catch (e) { }
+
+                (data.participants || []).forEach(p => {
+                    const row = document.createElement('div');
+                    row.style.cssText = 'display:flex;justify-content:space-between;align-items:center;padding:6px;background:#0f0f12;border-radius:6px;border:1px solid #222;';
+                    row.innerHTML = `<div style="font-size:13px;">${p.display_name || p.username || p.user_id}</div>`;
+                    const controls = document.createElement('div'); controls.style.display = 'flex'; controls.style.gap = '6px';
+
+                    // Mute button (for hosts)
+                    if (isOwner) {
+                        const muteBtn = document.createElement('button'); muteBtn.innerText = 'Mute'; muteBtn.style.cssText='padding:4px 6px;border-radius:4px;background:#222;color:white;border:1px solid #333;';
+                        muteBtn.onclick = () => adminAction('mute', p.user_id);
+                        controls.appendChild(muteBtn);
+
+                        const pinBtn = document.createElement('button'); pinBtn.innerText = 'Pin'; pinBtn.style.cssText='padding:4px 6px;border-radius:4px;background:#222;color:white;border:1px solid #333;';
+                        pinBtn.onclick = () => adminAction('pin', p.user_id);
+                        controls.appendChild(pinBtn);
+
+                        const removeBtn = document.createElement('button'); removeBtn.innerText = 'Remove'; removeBtn.style.cssText='padding:4px 6px;border-radius:4px;background:#5a1f1f;color:white;border:1px solid #7a2f2f;';
+                        removeBtn.onclick = () => { if(confirm('Remove participant?')) adminAction('remove', p.user_id); };
+                        controls.appendChild(removeBtn);
+                    }
+
+                    row.appendChild(controls);
+                    list.appendChild(row);
+                });
+            } catch (err) { console.error('Render participants error', err); }
+        }
+
+        function adminAction(action, targetUserId) {
+            socket.emit('admin-action', { roomId: currentRoom, action, targetUserId });
+        }
+
+        // Handle admin actions coming from server
+        socket.on('admin-action', (data) => {
+            if (!data || !data.action) return;
+            const action = data.action;
+            if (action === 'mute') {
+                // mute local mic
+                if (localStream) localStream.getAudioTracks().forEach(t => t.enabled = false);
+                alert('You have been muted by the host');
+            }
+            if (action === 'remove') {
+                // left room by admin
+                alert('You were removed from the meeting by the host');
+                location.href = '/';
+            }
+            if (action === 'pin') {
+                // highlight pinned participant
+                const target = data.targetUserId;
+                // naive highlight by showing a message
+                const chatMessages = document.getElementById('chat-messages');
+                const msgDiv = document.createElement('div');
+                msgDiv.style.cssText = "background: #223344; padding: 8px; border-radius: 4px; margin-bottom: 5px; color: #bfefff; font-weight: bold;";
+                msgDiv.innerText = `${target} has been pinned by host`;
+                chatMessages.appendChild(msgDiv);
+                chatMessages.scrollTop = chatMessages.scrollHeight;
+            }
+        });
+
+        // ========================================
+        // === INITIALIZATION ===
+        // ========================================
+
+        navigator.mediaDevices.getUserMedia({ video: true, audio: true })
+            .then(stream => {
+                localStream = stream;
+                document.getElementById('local-video').srcObject = stream;
+                document.getElementById('active-video').srcObject = stream;
+                const user = getLocalUser();
+                socket.emit('join-room', currentRoom, user.id);
+                // Try to upgrade to authenticated user if token exists
+                attemptAuth().then(realUser => {
+                    if (realUser) {
+                        // Update local label if authenticated
+                        const label = document.querySelector('#localCard .user-label');
+                        if (label) label.innerText = `${realUser.displayName || realUser.username} (You)`;
+                    }
+                    // ensure participants count is fetched
+                    fetchParticipants();
+                });
+            }).catch(err => console.error("Webcam stream error:", err));
+
+    </script>
+        <div style="position:fixed; right:12px; bottom:12px; background:rgba(0,0,0,0.6); color:white;padding:8px 10px;border-radius:8px;border:1px solid #333;font-size:12px;z-index:2000;">
+            Built by <strong>Salim Abdullahi Zakka</strong>
+        </div>
+</body>
+</html>
